@@ -1,0 +1,53 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
+
+# 1. Load the dataset (update filename and encoding if needed)
+data = pd.read_csv('completeSpamAssassin.csv', encoding='utf-8')
+
+# 2. Inspect and clean column names
+data.columns = data.columns.str.strip()
+print("Columns in dataset:", data.columns)
+
+# 3. Identify actual text and label columns (update if different)
+text_col = 'Body'   # Replace with the actual email text column name
+label_col = 'Label' # Replace with the actual label column name
+
+# 4. Lowercase the email text for uniformity
+data[text_col] = data[text_col].str.lower()
+
+# 5. Drop rows with missing texts or labels
+data = data.dropna(subset=[text_col, label_col])
+
+# 6. Split into features and labels
+X = data[text_col]
+y = data[label_col]
+
+# 7. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 8. Vectorize text using TF-IDF
+vectorizer = TfidfVectorizer(max_features=3000)
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+
+# 9. Train multinomial Naive Bayes classifier
+model = MultinomialNB()
+model.fit(X_train_tfidf, y_train)
+
+# 10. Predict on test data and evaluate
+y_pred = model.predict(X_test_tfidf)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+# 11. Function to predict category for new emails
+def predict_category(email_text):
+    email_text = email_text.lower()
+    email_tfidf = vectorizer.transform([email_text])
+    return model.predict(email_tfidf)[0]
+
+# Example usage
+sample_email = "Congratulations! You've won a free lottery. Click here to claim now."
+print("Predicted category:", predict_category(sample_email))
